@@ -244,7 +244,11 @@ function App(){
       });
       c.on('close',function(){cr.current=null});
     });
-    p.on('error',function(){connected=true;clearTimeout(to);set(function(x){return Object.assign({},x,{error:'Failed to connect.'})})});
+    p.on('error',function(e){
+      if(e.type==='peer-unavailable')return;
+      connected=true;clearTimeout(to);
+      set(function(x){return Object.assign({},x,{error:'Connect failed: '+(e.message||e.type||'unknown')})});
+    });
   },[]);
 
   // Dealer AI effect
