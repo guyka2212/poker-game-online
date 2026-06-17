@@ -200,11 +200,12 @@ function App(){
     if(n.betting.roundOver&&(n.playerFolded||n.dealerFolded)){const x=showdown(n);set(x);sendState(x)}
   },[sendState]);
 
-  const initDealer=useCallback(function(){
+  const startDealer=useCallback(function tryRoom(prevId){
     const g=freshState();g.view='dealer';g.role='dealer';set(g);
     try{pr.current&&pr.current.destroy()}catch(e){}
-    const p=new Peer();pr.current=p;cr.current=null;
-    p.on('open',function(id){set(function(x){return Object.assign({},x,{roomCode:id,error:''})})});
+    const id=String(Math.floor(Math.random()*900000)+100000);
+    const p=new Peer(id);pr.current=p;cr.current=null;
+    p.on('open',function(rid){set(function(x){return Object.assign({},x,{roomCode:rid,error:''})})});
     p.on('connection',function(c){
       cr.current=c;
       c.on('data',function(d){
@@ -216,7 +217,10 @@ function App(){
       });
       c.on('close',function(){cr.current=null});
     });
-    p.on('error',function(e){if(e.type!=='unavailable-id')set(function(x){return Object.assign({},x,{error:'Room creation failed.'})})});
+    p.on('error',function(e){
+      if(e.type==='unavailable-id'){setTimeout(function(){tryRoom(id)},300)}
+      else{set(function(x){return Object.assign({},x,{error:'Room creation failed.'})})}
+    });
   },[procAction]);
 
   const initPlayer=useCallback(function(){set(freshState());set(function(x){return Object.assign({},x,{view:'player',role:'player'})})},[]);
@@ -302,7 +306,7 @@ function App(){
       h('div',{className:'t',style:{padding:'24px'}},h(PlayerSetup,{state:s,connectAsPlayer:connectAsPlayer})),
       h('div',{style:{textAlign:'center',marginTop:12}},h('button',{className:'lb-btn sc',style:{fontSize:14,padding:'10px 20px',maxWidth:200},onClick:reset},'\u2190 Back'))
     );
-  return h(HomePage,{onD:initDealer,onP:initPlayer});
+  return h(HomePage,{onD:startDealer,onP:initPlayer});
 }
 
 ReactDOM.render(h(App),document.getElementById('root'));
