@@ -52,6 +52,7 @@ function ActionBar(props){
   const callCost=b.currentBet-b.playerCommit;
   const canAct=mt&&!dt&&state.phase!=='showdown'&&state.phase!=='hand-over';
   const[ra,setRA]=useState(Math.min(40,state.playerChips));
+  const[ac,setAc]=useState(false);
   const mn=Math.max(Math.max(20,b.currentBet+20),b.currentBet+b.currentBet-b.playerCommit);
   const mx=state.playerChips+b.playerCommit;
   useEffect(function(){
@@ -59,21 +60,45 @@ function ActionBar(props){
     setRA(function(p){return Math.max(Math.min(mn,p),Math.min(mx,p))});
   },[mn,mx,canAct,state.playerChips]);
   if(state.phase==='showdown'||state.phase==='hand-over')return null;
+
+  const doRaise=function(){
+    setAc(false);
+    canAct&&sendAction({type:canCheck?'bet':'raise',amount:ra});
+  };
+  const doAllIn=function(){setAc(true)};
+  const cancelAllIn=function(){setAc(false)};
+  const confirmAllIn=function(){
+    setAc(false);
+    canAct&&sendAction({type:canCheck?'bet':'raise',amount:mx});
+  };
+
+  var costLabel=(ra-b.playerCommit);
+  if(costLabel<=0)costLabel='';
+  else costLabel=' ('+costLabel+' chips)';
+
   return h('div',{className:'ab'},
-    canCheck
-      ? h('button',{className:'ab-btn b1',disabled:!canAct,onClick:function(){canAct&&sendAction({type:'check'})}},'Check')
-      : h('button',{className:'ab-btn b2',disabled:!canAct,onClick:function(){canAct&&sendAction({type:'call'})}},'Call'),
-    h('div',{style:{display:'flex',flexDirection:'column',flex:1,minWidth:120,gap:3}},
-      h('div',{style:{display:'flex',gap:4}},
-        canCheck?null:h('button',{className:'ab-btn b2',disabled:!canAct,onClick:function(){canAct&&sendAction({type:'call'})}},'Call '+callCost),
-        h('button',{className:'ab-btn b3',disabled:!canAct,onClick:function(){canAct&&sendAction({type:canCheck?'bet':'raise',amount:ra})}},canCheck?'Bet':'Raise'),
-        h('button',{className:'ab-btn b4',disabled:!canAct,onClick:function(){canAct&&sendAction({type:'fold'})}},'Fold')
-      ),
-      h('div',{className:'rc'},
-        h('input',{type:'range',min:mn,max:mx,value:ra,disabled:!canAct,onChange:function(e){setRA(Number(e.target.value))},style:{opacity:canAct?1:.25}}),
-        h('span',{className:'ra'},ra>=mx?'ALL IN':String(ra))
-      )
-    )
+    ac
+      ? h('div',{style:{display:'flex',flexDirection:'column',alignItems:'center',gap:8,width:'100%',padding:'8px 0'}},
+          h('span',{style:{fontWeight:700,fontSize:'clamp(14px,2.5vw,18px)',color:'#e74c3c'}},'Go all in with '+(mx-b.playerCommit)+' chips?'),
+          h('div',{style:{display:'flex',gap:10}},
+            h('button',{className:'ab-btn b3',style:{flex:1},onClick:confirmAllIn},'Accept'),
+            h('button',{className:'ab-btn b4',style:{flex:1},onClick:cancelAllIn},'Cancel')
+          )
+        )
+      : h('div',{style:{display:'flex',flexDirection:'column',flex:1,minWidth:120,gap:3}},
+          h('div',{style:{display:'flex',gap:4}},
+            canCheck
+              ? h('button',{className:'ab-btn b1',disabled:!canAct,onClick:function(){canAct&&sendAction({type:'check'})}},'Check')
+              : h('button',{className:'ab-btn b2',disabled:!canAct,onClick:function(){canAct&&sendAction({type:'call'})}},'Call '+(callCost||'')),
+            h('button',{className:'ab-btn b3',disabled:!canAct,onClick:doRaise},canCheck?'Bet'+costLabel:'Raise'+costLabel),
+            h('button',{className:'ab-btn b3',disabled:!canAct||ra>=mx,onClick:doAllIn},'All In'),
+            h('button',{className:'ab-btn b4',disabled:!canAct,onClick:function(){canAct&&sendAction({type:'fold'})}},'Fold')
+          ),
+          h('div',{className:'rc'},
+            h('input',{type:'range',min:mn,max:mx,value:ra,disabled:!canAct,onChange:function(e){setRA(Number(e.target.value))},style:{opacity:canAct?1:.25}}),
+            h('span',{className:'ra'},ra>=mx?'ALL IN':ra+' chips')
+          )
+        )
   );
 }
 
