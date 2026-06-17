@@ -262,7 +262,11 @@ function App(){
     });
   },[procAction]);
 
-  const initPlayer=useCallback(function(){set(freshState());set(function(x){return Object.assign({},x,{view:'player',role:'player'})})},[]);
+  const initPlayer=useCallback(function(){
+    try{pr.current&&pr.current.destroy()}catch(e){}
+    pr.current=null;cr.current=null;
+    set(freshState());set(function(x){return Object.assign({},x,{view:'player',role:'player'})})
+  },[]);
 
   const connectAsPlayer=useCallback(function(code,name){
     set(function(x){return Object.assign({},x,{roomCode:code,playerName:name,error:''})});
@@ -340,13 +344,13 @@ function App(){
     pr.current=null;cr.current=null;set(freshState());
   },[]);
 
-  if(s.view==='game')return h(GameView,{state:s,sendAction:sendAction,role:s.role,playerName:s.playerName||'You'});
+  if(s.view==='game'&&!(s.role==='player'&&s.phase==='waiting'))return h(GameView,{state:s,sendAction:sendAction,role:s.role,playerName:s.playerName||'You'});
   if(s.view==='dealer')
     return h('div',{style:{width:'100%'}},
       h('div',{className:'t',style:{padding:'24px'}},h(DealerSetup,{state:s,startGame:startGame})),
       h('div',{style:{textAlign:'center',marginTop:12}},h('button',{className:'lb-btn sc',style:{fontSize:14,padding:'10px 20px',maxWidth:200},onClick:reset},'\u2190 Back'))
     );
-  if(s.view==='player')
+  if(s.view==='player'||(s.view==='game'&&s.role==='player'&&s.phase==='waiting'))
     return h('div',{style:{width:'100%'}},
       h('div',{className:'t',style:{padding:'24px'}},h(PlayerSetup,{state:s,connectAsPlayer:connectAsPlayer})),
       h('div',{style:{textAlign:'center',marginTop:12}},h('button',{className:'lb-btn sc',style:{fontSize:14,padding:'10px 20px',maxWidth:200},onClick:reset},'\u2190 Back'))
