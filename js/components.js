@@ -200,10 +200,11 @@ function App(){
     if(n.betting.roundOver&&(n.playerFolded||n.dealerFolded)){const x=showdown(n);set(x);sendState(x)}
   },[sendState]);
 
-  const startDealer=useCallback(function tryRoom(prevId){
+  const startDealer=useCallback(function tryRoom(){
     const g=freshState();g.view='dealer';g.role='dealer';set(g);
     try{pr.current&&pr.current.destroy()}catch(e){}
-    const id=String(Math.floor(Math.random()*900000)+100000);
+    const cs='ABCDEFGHJKLMNPQRTVWXYZ2346789';
+    var id='';for(var i=6;i>0;i--)id+=cs[Math.random()*cs.length|0];
     const p=new Peer(id);pr.current=p;cr.current=null;
     p.on('open',function(rid){set(function(x){return Object.assign({},x,{roomCode:rid,error:''})})});
     p.on('connection',function(c){
@@ -218,7 +219,7 @@ function App(){
       c.on('close',function(){cr.current=null});
     });
     p.on('error',function(e){
-      if(e.type==='unavailable-id'){setTimeout(function(){tryRoom(id)},300)}
+      if(e.type==='unavailable-id'){setTimeout(function(){tryRoom()},300)}
       else{set(function(x){return Object.assign({},x,{error:'Room creation failed.'})})}
     });
   },[procAction]);
@@ -233,7 +234,7 @@ function App(){
     var to=setTimeout(function(){if(!connected)set(function(x){return Object.assign({},x,{error:'Connection timed out.'})})},15000);
     p.on('open',function(){
       if(p.destroyed)return;
-      const c=p.connect(code.toLowerCase(),{reliable:true});
+      const c=p.connect(code,{reliable:true});
       c.on('open',function(){connected=true;clearTimeout(to);c.send({type:'join',name})});
       c.on('data',function(d){
         if(d.type==='game_state'){
