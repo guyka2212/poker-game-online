@@ -344,18 +344,22 @@ function App(){
     pr.current=null;cr.current=null;set(freshState());
   },[]);
 
-  if(s.view==='game'&&!(s.role==='player'&&s.phase==='waiting'))return h(GameView,{state:s,sendAction:sendAction,role:s.role,playerName:s.playerName||'You'});
+  const dbg = {view:s.view,role:s.role,phase:s.phase,roomCode:s.roomCode,error:s.error};
+  const dbgEl = h('pre',{style:{position:'fixed',bottom:0,right:0,background:'rgba(0,0,0,.8)',color:'#0f0',fontSize:12,padding:'4px 8px',margin:0,borderRadius:'4px 0 0 0',zIndex:9999,textAlign:'left',pointerEvents:'none',maxWidth:200,overflow:'hidden',whiteSpace:'pre-wrap'}},JSON.stringify(dbg));
+  if(s.view==='game'&&!(s.role==='player'&&s.phase==='waiting'))return h(React.Fragment,null,dbgEl,h(GameView,{state:s,sendAction:sendAction,role:s.role,playerName:s.playerName||'You'}));
   if(s.view==='dealer')
     return h('div',{style:{width:'100%'}},
+      dbgEl,
       h('div',{className:'t',style:{padding:'24px'}},h(DealerSetup,{state:s,startGame:startGame})),
       h('div',{style:{textAlign:'center',marginTop:12}},h('button',{className:'lb-btn sc',style:{fontSize:14,padding:'10px 20px',maxWidth:200},onClick:reset},'\u2190 Back'))
     );
   if(s.view==='player'||(s.view==='game'&&s.role==='player'&&s.phase==='waiting'))
     return h('div',{style:{width:'100%'}},
+      dbgEl,
       h('div',{className:'t',style:{padding:'24px'}},h(PlayerSetup,{state:s,connectAsPlayer:connectAsPlayer})),
       h('div',{style:{textAlign:'center',marginTop:12}},h('button',{className:'lb-btn sc',style:{fontSize:14,padding:'10px 20px',maxWidth:200},onClick:reset},'\u2190 Back'))
     );
-  return h(HomePage,{onD:startDealer,onP:initPlayer});
+  return h(React.Fragment,null,dbgEl,h(HomePage,{onD:startDealer,onP:initPlayer}));
 }
 
 ReactDOM.render(h(App),document.getElementById('root'));
