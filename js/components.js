@@ -166,7 +166,7 @@ function HomePage(props){
 }
 
 function DealerSetup(props){
-  const{state}=props;
+  const{state,startGame}=props;
   if(state.phase!=='waiting')return null;
   return h('div',{className:'lby'},
     h('h1',{style:{fontSize:'clamp(18px,4vw,28px)',marginBottom:4}},'Room Created'),
@@ -174,7 +174,15 @@ function DealerSetup(props){
     h('div',{className:'rcode'},state.roomCode||'------'),
     !state.roomCode?h('div',{className:'sp'}):null,
     state.error?h('p',{className:'err'},state.error):null,
-    state.roomCode?h('div',{style:{display:'flex',alignItems:'center',gap:8,marginTop:8}},h('div',{className:'sp'}),h('span',{style:{fontSize:14,opacity:.6}},'Waiting for player...')):null
+    state.connected
+      ? h('div',{style:{display:'flex',flexDirection:'column',alignItems:'center',gap:12,marginTop:12}},
+          h('div',{style:{display:'flex',alignItems:'center',gap:8,fontSize:'clamp(14px,2.5vw,18px)'}},
+            h('span',{style:{color:'#2ecc71',fontSize:24}},'\u2713'),
+            h('span',null,state.playerName||'Player'),h('span',{style:{opacity:.6}},'joined!')
+          ),
+          h('button',{className:'lb-btn',style:{padding:'14px 52px',margin:0},onClick:startGame},'Play')
+        )
+      : h('div',{style:{display:'flex',alignItems:'center',gap:8,marginTop:8}},h('div',{className:'sp'}),h('span',{style:{fontSize:14,opacity:.6}},'Waiting for player...'))
   );
 }
 
@@ -189,7 +197,7 @@ function PlayerSetup(props){
     connectAsPlayer(code.trim(),name.trim());
   };
   if(joining&&state.view!=='game'&&!state.error)
-    return h('div',{className:'lby'},h('div',{className:'sp'}),h('p',{style:{marginTop:10,opacity:.7}},'Connecting...'));
+    return h('div',{className:'lby'},h('div',{className:'sp'}),h('p',{style:{marginTop:10,opacity:.7}},'Waiting for dealer to start...'));
   return h('div',{className:'lby'},
     h('h1',{style:{fontSize:'clamp(18px,4vw,28px)'}},'Join a Game'),
     h('p',{className:'sub',style:{marginBottom:16}},'Enter the room code from the dealer'),
@@ -212,6 +220,13 @@ function App(){
   const sendState=useCallback(function(x){
     try{if(cr.current&&cr.current.open)cr.current.send({type:'game_state',state:x})}catch(e){}
   },[]);
+
+  const startGame=useCallback(function(){
+    const c=sr.current;
+    const gs=newHand(c);
+    gs.view='game';gs.role='dealer';gs.playerName=c.playerName;
+    set(gs);sendState(gs);
+  },[sendState]);
 
   const procAction=useCallback(function(a){
     const c=sr.current;
@@ -236,9 +251,7 @@ function App(){
       cr.current=c;
       c.on('data',function(d){
         if(d.type==='join'){
-          const cu=sr.current,gs=newHand(cu);
-          gs.view='game';gs.role='dealer';gs.playerName=d.name;
-          set(gs);c.send({type:'game_state',state:gs});
+          set(function(x){return Object.assign({},x,{playerName:d.name,connected:true,error:''})});
         }else if(d.type==='player_action'&&d.action)procAction(d.action);
       });
       c.on('close',function(){cr.current=null});
@@ -260,7 +273,9 @@ function App(){
     p.on('open',function(){
       if(p.destroyed)return;
       const c=p.connect(code,{reliable:true});
-      c.on('open',function(){connected=true;clearTimeout(to);c.send({type:'join',name})});
+      c.on('open',function(){connected=true;clearTimeout(to);c.send({type:'join',name});
+        set(function(x){return Object.assign({},x,{error:''})});
+      });
       c.on('data',function(d){
         if(d.type==='game_state'){
           const x=Object.assign({},d.state,{view:'game',role:'player',playerName:name});
@@ -328,7 +343,7 @@ function App(){
   if(s.view==='game')return h(GameView,{state:s,sendAction:sendAction,role:s.role,playerName:s.playerName||'You'});
   if(s.view==='dealer')
     return h('div',{style:{width:'100%'}},
-      h('div',{className:'t',style:{padding:'24px'}},h(DealerSetup,{state:s})),
+      h('div',{className:'t',style:{padding:'24px'}},h(DealerSetup,{state:s,startGame:startGame})),
       h('div',{style:{textAlign:'center',marginTop:12}},h('button',{className:'lb-btn sc',style:{fontSize:14,padding:'10px 20px',maxWidth:200},onClick:reset},'\u2190 Back'))
     );
   if(s.view==='player')
